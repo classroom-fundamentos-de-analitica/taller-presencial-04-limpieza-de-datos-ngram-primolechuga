@@ -5,6 +5,8 @@ import pandas as pd
 
 def load_data(input_file):
     """Lea el archivo usando pandas y devuelva un DataFrame"""
+    data = pd.read_csv(input_file, sep="\t")
+    return data
 
 
 def create_key(df, n):
@@ -20,18 +22,43 @@ def create_key(df, n):
     # Convierta el texto a una lista de tokens
     # Una el texto sin espacios en blanco
     # Convierta el texto a una lista de n-gramas
+    df = df.copy()
+    df["key"] = df["text"]
+    df["key"] = (df["key"]
+    .str.strip()
+    .str.lower()
+    .str.replace("-", "")
+        .str.translate(
+           str.maketrans("", "", "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~")
+        )
+    .str.split()
+    .str.join("")
+    .apply(lambda x: [x[i:i+n] for i in range(len(x)-n+1)])
     # Ordene la lista de n-gramas y remueve duplicados
+    .apply(lambda x: sorted(set(x)))
+    )
     # Convierta la lista de ngramas a una cadena
+    df["key"] = df["key"].apply(lambda x: "".join(x))
     
     return df
-
 
 def generate_cleaned_column(df):
     """Crea la columna 'cleaned' en el DataFrame"""
 
     df = df.copy()
-
     # Ordene el dataframe por 'key' y 'text'
+    df = df.copy()
+
+    df = df.sort_values(by=["key", "text"]).copy()
+
+    fingerprints = df.groupby("key").first().reset_index()
+
+    fingerprints = fingerprints.set_index("key")['text'].to_dict()
+
+    df["cleaned"] = df["key"].map(fingerprints)
+
+    return df
+
     # Seleccione la primera fila de cada grupo de 'key'
     # Cree un diccionario con 'key' como clave y 'text' como valor
     # Cree la columna 'cleaned' usando el diccionario
